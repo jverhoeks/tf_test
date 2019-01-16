@@ -6,68 +6,71 @@ pipeline {
         stage('Staging') {
           environment {
             ENV = 'staging'
+            role = 'jenkins-terraform-staging-role'
           }
           steps {
-            echo 'tett'
+            withCredentials(bindings: [[
+                                 $class: 'AmazonWebServicesCredentialsBinding',
+                                 credentialsId: env.role
+                             ]]) {
+                sh 'ls'
+              }
+
+            }
           }
-        }
-        stage('Production') {
-          environment {
-            ENV = 'production'
-          }
-          steps {
-            echo 'planning production'
+          stage('Production') {
+            environment {
+              ENV = 'production'
+            }
+            steps {
+              echo 'planning production'
+            }
           }
         }
       }
-    }
-    stage('Apply') {
-      parallel {
-        stage('apply Staging') {
-          when {
-            branch 'master'
-          }
-          steps {
-            slackSend(channel: '#jenkins', message: "Terraform _Staging_ Requires *Approval*:   (<${env.RUN_DISPLAY_URL}|${env.JOB_NAME}>)")
-            timeout(time: 30, unit: 'MINUTES') {
-              input 'Run Apply on staging'
-            }
-
-            withCredentials(bindings: [[
-                                                                 $class: 'AmazonWebServicesCredentialsBinding',
-                                                                 credentialsId: 'jenkins-terraform-staging-role'
-                                                             ]]) {
-                sh 'make auto-apply'
-              }
-
-              slackSend(channel: '#jenkins', message: "Terraform _Staging_ Applied (<${env.RUN_DISPLAY_URL}|${env.JOB_NAME}>)")
-            }
-          }
-          stage('Apply Production') {
+      stage('Apply') {
+        parallel {
+          stage('apply Staging') {
             when {
               branch 'master'
             }
             steps {
-              slackSend(channel: '#jenkins', message: "Terraform _Production Requires *Approval*:   (<${env.RUN_DISPLAY_URL}|${env.JOB_NAME}>)")
               timeout(time: 30, unit: 'MINUTES') {
-                input 'Run Apply on production'
+                input 'Run Apply on staging'
               }
 
-              echo 'apply production'
-              slackSend(channel: '#jenkins', message: "Terraform _Production_ Applied   (<${env.RUN_DISPLAY_URL}|${env.JOB_NAME}>)")
+              withCredentials(bindings: [[
+                                   $class: 'AmazonWebServicesCredentialsBinding',
+                                   credentialsId: 'jenkins-terraform-staging-role'
+                               ]]) {
+                  sh 'make auto-apply'
+                }
+
+              }
+            }
+            stage('Apply Production') {
+              when {
+                branch 'master'
+              }
+              steps {
+                timeout(time: 30, unit: 'MINUTES') {
+                  input 'Run Apply on production'
+                }
+
+                echo 'apply production'
+              }
             }
           }
         }
       }
-    }
-    environment {
-      AWS_DEFAULT_REGION = 'eu-west-1'
-    }
-    post {
-      always {
-        cleanWs()
+      environment {
+        AWS_DEFAULT_REGION = 'eu-west-1'
+      }
+      post {
+        always {
+          cleanWs()
+
+        }
 
       }
-
     }
-  }
