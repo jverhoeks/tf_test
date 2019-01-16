@@ -1,10 +1,5 @@
 pipeline {
-  agent {
-    node {
-      label 'terraform'
-    }
-
-  }
+  agent any
   stages {
     stage('Plan') {
       parallel {
@@ -14,9 +9,9 @@ pipeline {
           }
           steps {
             withCredentials(bindings: [[
-                                 $class: 'AmazonWebServicesCredentialsBinding',
-                                 credentialsId: 'jenkins-terraform-staging-role'
-                             ]]) {
+                                               $class: 'AmazonWebServicesCredentialsBinding',
+                                               credentialsId: 'jenkins-terraform-staging-role'
+                                           ]]) {
                 sh '[ ! -d ".terraform" ] && make init'
                 sh 'make'
               }
@@ -46,9 +41,9 @@ pipeline {
               }
 
               withCredentials(bindings: [[
-                                   $class: 'AmazonWebServicesCredentialsBinding',
-                                   credentialsId: 'jenkins-terraform-staging-role'
-                               ]]) {
+                                                   $class: 'AmazonWebServicesCredentialsBinding',
+                                                   credentialsId: 'jenkins-terraform-staging-role'
+                                               ]]) {
                   sh 'make auto-apply'
                 }
 
