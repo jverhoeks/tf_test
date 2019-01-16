@@ -4,11 +4,17 @@ pipeline {
     stage('Plan') {
       parallel {
         stage('stg') {
+          environment {
+            ENV = 'stg'
+          }
           steps {
             sh 'ls'
           }
         }
         stage('prd') {
+          environment {
+            ENV = 'STG'
+          }
           steps {
             echo 'test'
           }
